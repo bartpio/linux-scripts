@@ -1,0 +1,36 @@
+#!/bin/bash
+
+#First argument: hostname of DNS server
+#Note hostname of this-machine is sanity checked for .local suffix; this may break compatibility with many uses
+
+#Pull the IP of a configured DNS server#
+#Works on Ubuntu 18.04; note this is of quesitonable accuracy#
+#PROD=`systemd-resolve --status --no-pager | grep "DNS Servers" | head -n1 | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}'`
+
+#Pull the IP of a well-known DNS server#
+#Supply hostname of the DNS server as the first and only commandline arg#
+PROD=`dig +short $1 | head -n1`
+
+#Pull my IP and Host name#
+MYIP=`ip route get $PROD | grep -Eo "src [0-9.]+" | grep -Eo "[0-9.]+$"`
+MYPTR=`echo $MYIP | awk -F . '{print $4"."$3"."$2"."$1".in-addr.arpa"}'`
+MYNAME=`hostname -f | grep -E ".+[.]local$"`
+
+#Edit Checks#
+[ -z "$PROD" ] && exit 2
+[ -z "$MYIP" ] && exit 3
+[ -z "$MYNAME" ] && exit 4
+
+#Register our name and IP with the Domain Controller's DNS server. No authentication is used.#
+nsupdate -d <<FIN
+server $PROD
+update delete $MYNAME A
+update add $MYNAME 86400 A $MYIP
+
+update delete $MYPTR PTR
+update add $MYPTR 86400 PTR $MYNAME
+send
+answer
+quit
+FIN
+
