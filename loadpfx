@@ -1,0 +1,13 @@
+#!/bin/bash
+#Accept a single command line argument: Name of pfx file WITHOUT the .pfx extension
+BAS=$1
+
+#Output three useful forms. Annoyingly, each conversion will prompt for pfx decryption key, if there is one.
+#Output 1/3) PRIVATE key, plus certificate nodes
+openssl pkcs12 -in $BAS.pfx -out $BAS.private.pem  -nodes
+#Output 2/3) certificate nodes
+openssl pkcs12 -in $BAS.pfx -out $BAS.public.pem  -nodes -nokeys
+#Output 3/3) Single root CA certificate
+openssl pkcs12 -in $BAS.pfx -out $BAS.public.ca.pem  -cacerts -nokeys
+
+
