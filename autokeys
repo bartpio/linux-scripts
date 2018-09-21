@@ -1,6 +1,11 @@
 #!/bin/bash
 
+#Here we attempt generation of autokeys for all users in the system who have a home directory!
+#Does not handle unusual home directory structures.
+#For any subdirs of /home where the subdir name doesn't actually represent a user, an error will be emitted, and we proceed.
+
 for DIR in $(ls /home)
 do
- ./autokey $DIR
+  echo "Generating auto key for " $DIR
+  ./autokey $DIR
 done

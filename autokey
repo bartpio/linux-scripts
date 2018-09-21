@@ -1,31 +1,39 @@
 #!/bin/bash -e
+
+#For the specified username, we will generate an RSA key, store the private key in a tmpfs expected to exist on /mnt/autokeys (owned by root, permission 0704)
+#We add the key to the user's .ssh/authorized keys with a comment containing the string autokey and the date/time
+#We comment out any pre-existing lines containing the string autokey
+
+#First and only argument is username we are dealing with
 WHO=$1
 
+#Sanity check that when we su we're not root
+#Overly complex greater than zero check used in an attempt to verify valid number
 WHOID=`su -l -c 'id -u' $WHO`
 OK=0
 if (( WHOID > 0)); then
   OK=1
 fi
 
-echo $OK
 if (( OK != 1 )); then
   echo "uid failure; make sure to specify a valid username in first arg"
   exit 2
 fi
 
-
+#another sanity check: check that su to the user and whoami works
 WHOTEST=`su -l -c 'whoami' $WHO`
 if [ "$WHOTEST" != "$WHO" ]; then
-  echo "sorry 3"
+  echo "whoami test failure; make sure that the user specified actually exists and is valid for this operation"
   exit 3
 fi
 
+#Remove any previous autokeys
+rm --preserve-root -f /mnt/autokeys/$WHO/autokey*
 
-
-rm --preserve-root -f /mnt/autokeys/$WHO/*
-
+#make directory and set ownership if needed
 mkdir -m 700 -p /mnt/autokeys/$WHO
 chown $WHO /mnt/autokeys/$WHO
 
 su -l -c 'WHO=$(whoami); DAT=$(date); /usr/bin/ssh-keygen -C "autokey for $WHO on $DAT" -b 2048 -t rsa -f /mnt/autokeys/$WHO/autokey_rsa -q -N ""' $WHO < /dev/null
 su -l -c 'WHO=$(whoami); DAT=$(date); /usr/bin/puttygen /mnt/autokeys/$WHO/autokey_rsa -C "autokey for $WHO on $DAT" -o /mnt/autokeys/$WHO/autokey_rsa.ppk' $WHO < /dev/null
+su -l -c 'WHO=$(whoami); AUKEY=~/.ssh/authorized_keys; mkdir -p -m 0700 ~/.ssh; touch $AUKEY; chmod 644 $AUKEY; sed -i -e "/^[^#].\+autokey/s/^/#old autokey /1" $AUKEY; cat /mnt/autokeys/$WHO/autokey_rsa.pub >> $AUKEY;' $WHO
