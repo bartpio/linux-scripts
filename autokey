@@ -1,0 +1,31 @@
+#!/bin/bash -e
+WHO=$1
+
+WHOID=`su -l -c 'id -u' $WHO`
+OK=0
+if (( WHOID > 0)); then
+  OK=1
+fi
+
+echo $OK
+if (( OK != 1 )); then
+  echo "uid failure; make sure to specify a valid username in first arg"
+  exit 2
+fi
+
+
+WHOTEST=`su -l -c 'whoami' $WHO`
+if [ "$WHOTEST" != "$WHO" ]; then
+  echo "sorry 3"
+  exit 3
+fi
+
+
+
+rm --preserve-root -f /mnt/autokeys/$WHO/*
+
+mkdir -m 700 -p /mnt/autokeys/$WHO
+chown $WHO /mnt/autokeys/$WHO
+
+su -l -c 'WHO=$(whoami); DAT=$(date); /usr/bin/ssh-keygen -C "autokey for $WHO on $DAT" -b 2048 -t rsa -f /mnt/autokeys/$WHO/autokey_rsa -q -N ""' $WHO < /dev/null
+su -l -c 'WHO=$(whoami); DAT=$(date); /usr/bin/puttygen /mnt/autokeys/$WHO/autokey_rsa -C "autokey for $WHO on $DAT" -o /mnt/autokeys/$WHO/autokey_rsa.ppk' $WHO < /dev/null
