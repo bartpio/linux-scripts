@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for DIR in $(ls /home)
+do
+ ./autokey $DIR
+done
